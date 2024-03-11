@@ -1,6 +1,12 @@
 # todo002
 
-A new Flutter project.
+- `Android`, `Iphone`, `기타 table` 에는 기본적으로 `SQLite` 라고 하는 작은 `RDBMS` 가 내장되어있다.
+- `Todo` 리스트를 `SQLite`에 저장하고, 리스트를 화면에 출력하는 프로젝트
+
+## SQLite를 사용하기 위하여 Dependency를 설치하기
+
+- SQLite : `flutter pub add sqflite`
+- 날짜시간
 
 ## 플루터(다트)의 변수
 
