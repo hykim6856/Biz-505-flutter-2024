@@ -1,6 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
-import 'package:timer/dash_table.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:timer/dash_page.dart';
 import 'package:timer/home_page.dart';
 import 'package:timer/setting_page.dart';
 
@@ -31,28 +33,101 @@ class MainPage extends StatefulWidget {
 }
 
 class _MainPageState extends State<MainPage> {
-  int _pageIndex = 1;
-  int wantTimer = 20;
+  final int _pageIndex = 1;
+  int workTimer = 20;
 
-  void onChangeSetting(String value) {
+// Promise (약속) 이 함수를 실행하면 어떤 결과를 반드시 얻을 수 있다.
+  Future<String> getWorkTime() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    /// dart 에서는 변수에 null 값을 원칙적으로 허용하지 않는다.
+    /// 하지만 불가항력적으로 어떨 주 없이 null이 발생 할 수 있다.
+    /// 이럴때는 변수를 nullsafe 방식으로 선언해야한다.
+    String? workTime = prefs.getString("workTime");
+
+    /// 이 함수의 return type은 future<String> 으로  NonNullable이다.
+    /// 이럴때는 만약 리턴하는 워크타임의 값이 null값이면
+    /// 대체문자열을 리턴하도록 한다.
+    ///만약 워크타임이 널값이면 문자열 20을 리턴
+    return workTime ?? "20";
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    try {
+      /// async 가 설정된 함수는 반드시 await로 호출, 사용을 해야한다.
+      /// 함수를 실행할때 await 를 사용하려면 함수본체(initState())에
+      /// 이씽크 키워드가 부착되어야한다.
+      /// 그런데 오버라이드 함수는 함수의 원형을 변경하지 않는것이 좋다.
+      /// initState() 함수도 상속받은 클래스의 함수를 재젖ㅇ의 한 것으로
+      ///  함수의 원형을 변경하지 않을 것이다.
+      /// 그러면 async 함수인 getworkTime 을 어떻게 사용해야 할까?
+      /// 이때 함수 chainnig 을 이용한 . then() 함수를 사용하여 결과물을 처리하려한다.
+      /// .then 함수는 getWorkTime() 함수가 완료되어 return 값이 발생하면
+      /// value 매개변수에 값을 받아 내부으 함수실행한다.
+      getWorkTime().then((value) {
+        setState(() => workTimer = int.parse(value));
+      });
+
+      // final result = getWorkTime();
+      // setState(() => workTimer = result);
+    } catch (e) {
+      debugPrint(toString());
+    }
+  }
+
+  Future setWorkTime(value) async {
+    // 싱글톤 방식
+    ///제한된 리소스(장치, 저장, 네트워크 등)
+    ///한번만 생성하여 사용할때는 공유하는 개념
+    SharedPreferences pref = await SharedPreferences.getInstance();
+    pref.setString("workTime", value);
+  }
+
+  void onChangeSetting(String value) async {
     if (value.length > 3) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(value)));
     }
+
+    /// setting_page 의 일할시간 TextField 의 onChange event 핸들러로부터
+    /// 전달된 문자열을 정수형으로 변환하여 workTimer state 에 할당하기
+
+    /// 정규식을 이용하여 입력된 값에 숫자 0부터 9외의 문자열이 있으면
+    /// ""으로 만들어삭제하라.
+    value = value.replaceAll(RegExp(r'[^0-9]'), '');
+    await setWorkTime(value);
+
+    // state 변수에 값을 할당하는 일반적인 방법
+
+    setState(() => workTimer = int.parse(value));
+
+    // state 변수에 값을 할당하기 전에 여러 연산을 수행하야 하는 경우
+    // 연산 절차 코드를 실행하여 state 변수에 값을 할당하고
+    // setState() 함수는 Blank 함수를 실행하는 방법으로 구현한다
+    workTimer = int.parse(value);
+    setState(() => {});
   }
 
-  //타입의 변수 선언
-  //flutter dart 에서 변수를 선언할 때 final, const
-  //키워드가 있으면 변수의 타입을 명시하지 않아도 됨.
-  //단 이 때 반드시 값이 초기화 되어야 함
+  /// flutter dart에서 변수를 선언할때 final, const 키워드가 있으면
+  /// 변수의 type 을 명시하지 않아도 된다
+  /// 단, 이때 반드시 값이 초기화 되어야 한다
+  ///
+  /// PageController type 의 변수 선언
+  /// HTML tag 에 id 를 적용하는 것처럼 flutter 에서 화면에 표시되는
+  /// component 에 id 를 부착하기 위해 선언하는 변수
 
   final _pageController = PageController(initialPage: 0);
+
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
         image: DecorationImage(
-          image: AssetImage("images/tomato.jpg"),
+          image: AssetImage(
+            "images/tomato.jpg",
+          ),
           fit: BoxFit.cover,
         ),
       ),
@@ -63,9 +138,14 @@ class _MainPageState extends State<MainPage> {
           scrollDirection: Axis.horizontal,
           onPageChanged: (value) => setState(() => _pageIndex = value),
           children: [
-            const HomePage(),
+            HomePage(
+              workTimer: workTimer,
+            ),
             const DashPage(),
-            SettingPage(onChange: onChangeSetting),
+            const SettingPage(
+              onChange: onChangeSetting,
+              workTimer: workTimer,
+            ),
           ],
         ),
         bottomNavigationBar: BottomNavigationBar(
@@ -85,12 +165,12 @@ class _MainPageState extends State<MainPage> {
               label: "home",
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard),
-              label: "dashboard",
+              icon: Icon(Icons.dashboard_sharp),
+              label: "Dashbord",
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.settings),
-              label: "settings",
+              label: "setting",
             ),
           ],
         ),

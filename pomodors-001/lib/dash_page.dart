@@ -13,7 +13,7 @@ class _DashPageState extends State<DashPage> {
     return const Scaffold(
       body: Text(
         "데쉬보드",
-        style: TextStyle(fontSize: 50),
+        style: TextStyle(fontSize: 80),
       ),
     );
   }
